@@ -140,48 +140,77 @@ const ItemSelector = ({ itemOptions, selectedItems, setSelectedItems }) => {
             >
               Quantity
             </Text>
+            <Text
+              style={{
+                flex: 1,
+                fontWeight: "bold",
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
+              Subtotal
+            </Text>
           </View>
 
           {/* Rows */}
-          {Object.entries(selectedItems).map(([item, data]) => (
-            <View
-              key={item}
-              style={{
-                flexDirection: "row",
-                marginBottom: 8,
-                alignItems: "center",
-              }}
-            >
-              <Text style={{ flex: 1, fontSize: 16 }}>{item}</Text>
+          {Object.entries(selectedItems).map(([item, data]) => {
+            const unitPrice = parseFloat(data.unitPrice) || 0;
+            const qty = parseInt(data.containers) || 0;
+            const subtotal = unitPrice * qty;
 
-              <TextInput
+            return (
+              <View
+                key={item}
                 style={{
-                  flex: 0.6,
-                  marginHorizontal: 5,
-                  textAlign: "center",
-                  backgroundColor: "#ccc",
-                  borderRadius: 5,
+                  flexDirection: "row",
+                  marginBottom: 8,
+                  alignItems: "center",
                 }}
-                value={data.unitPrice}
-                onChangeText={(val) => updateField(item, "unitPrice", val)}
-                placeholder=""
-                keyboardType="numeric"
-              />
-              <TextInput
-                style={{
-                  flex: 0.6,
-                  marginHorizontal: 5,
-                  textAlign: "center",
-                  backgroundColor: "#ccc",
-                  borderRadius: 5,
-                }}
-                value={data.containers}
-                onChangeText={(val) => updateField(item, "containers", val)}
-                placeholder=""
-                keyboardType="numeric"
-              />
-            </View>
-          ))}
+              >
+                <Text style={{ flex: 1.3, fontSize: 16 }}>{item}</Text>
+
+                <TextInput
+                  style={{
+                    flex: 1,
+                    marginHorizontal: 5,
+                    textAlign: "center",
+                    backgroundColor: "#ccc",
+                    borderRadius: 5,
+                  }}
+                  value={data.unitPrice.toString()}
+                  onChangeText={(val) => updateField(item, "unitPrice", val)}
+                  placeholder=""
+                  keyboardType="numeric"
+                />
+
+                <TextInput
+                  style={{
+                    flex: 1,
+                    marginHorizontal: 5,
+                    textAlign: "center",
+                    backgroundColor: "#ccc",
+                    borderRadius: 5,
+                  }}
+                  value={data.containers.toString()}
+                  onChangeText={(val) => updateField(item, "containers", val)}
+                  placeholder=""
+                  keyboardType="numeric"
+                />
+
+                {/* Subtotal column */}
+                <Text
+                  style={{
+                    flex: 1,
+                    textAlign: "center",
+                    fontWeight: "500",
+                    fontSize: 14,
+                  }}
+                >
+                  {subtotal.toFixed(2)}
+                </Text>
+              </View>
+            );
+          })}
 
           {/* Totals */}
           <View
@@ -194,7 +223,7 @@ const ItemSelector = ({ itemOptions, selectedItems, setSelectedItems }) => {
             }}
           >
             <Text style={{ flex: 1.3, fontWeight: "bold", fontSize: 14 }}>
-              Sub Total
+              Totals
             </Text>
 
             <Text
@@ -205,6 +234,7 @@ const ItemSelector = ({ itemOptions, selectedItems, setSelectedItems }) => {
                 textAlign: "center",
               }}
             >
+              {/* Total Unit Price (sum of unit prices only) */}
               {Object.values(selectedItems).reduce(
                 (sum, item) => sum + (parseFloat(item.unitPrice) || 0),
                 0
@@ -218,10 +248,28 @@ const ItemSelector = ({ itemOptions, selectedItems, setSelectedItems }) => {
                 textAlign: "center",
               }}
             >
+              {/* Total Quantity */}
               {Object.values(selectedItems).reduce(
                 (sum, item) => sum + (parseInt(item.containers) || 0),
                 0
               )}
+            </Text>
+            <Text
+              style={{
+                flex: 1,
+                fontWeight: "bold",
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
+              {/* Grand Total (unitPrice × quantity for all items) */}
+              {Object.values(selectedItems)
+                .reduce((sum, item) => {
+                  const unitPrice = parseFloat(item.unitPrice) || 0;
+                  const qty = parseInt(item.containers) || 0;
+                  return sum + unitPrice * qty;
+                }, 0)
+                .toFixed(2)}
             </Text>
           </View>
         </View>
@@ -455,7 +503,6 @@ const TransactionForm = ({
   };
 
   const handleSubmit = async () => {
-
     const itemsList = Object.entries(selectedItems).map(([name, data]) => ({
       item_id: itemMap[name]?.id || 0,
       item_name: name,
@@ -481,9 +528,8 @@ const TransactionForm = ({
     };
 
     console.log(test); // Final data format to be sent ----------------------------------------------------------->
-    
 
-    return;
+    return; //skip danay
 
     if (!loggedUser?.id) {
       Alert.alert("Error", "You must be logged in to create a transaction.");
