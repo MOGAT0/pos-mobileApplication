@@ -1,9 +1,12 @@
+// removed no longer in use (7/8/25)
+
 const express = require("express");
 const fetch = (...args) => import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const app = express();
 app.use(express.json());
 
+// test api
 const api_url = "http://localhost/pos_backend/endpoint.php"
 const PORT = 3000;
 

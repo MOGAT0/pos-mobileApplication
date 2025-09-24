@@ -12,6 +12,7 @@ import {
   PanResponder,
   Alert,
 } from "react-native";
+
 import Svg, { Path } from "react-native-svg";
 import { API_BASE_URL, API_PORT } from "@env";
 import Receipt from "./receipt";
@@ -19,6 +20,215 @@ import { getUser } from "./ss_login";
 import { router } from "expo-router";
 import Config from "./config";
 import Loading from "./loading";
+
+/* --- Item Selector component--- */
+const ItemSelector = ({ itemOptions, selectedItems, setSelectedItems }) => {
+  const [open, setOpen] = useState(false);
+
+  const toggleItem = (item) => {
+    setSelectedItems((prev) => {
+      const copy = { ...prev };
+      if (copy[item]) {
+        delete copy[item]; // unselect
+      } else {
+        copy[item] = { unitPrice: "", containers: "" }; // default values
+      }
+      return copy;
+    });
+  };
+
+  const updateField = (item, field, value) => {
+    setSelectedItems((prev) => ({
+      ...prev,
+      [item]: { ...prev[item], [field]: value },
+    }));
+  };
+
+  return (
+    <View style={fieldStyles.wrapper}>
+      <Text style={fieldStyles.label}>Add Items</Text>
+      <TouchableOpacity
+        style={[
+          dropdownStyles.button,
+          open && dropdownStyles.buttonOpen,
+          { backgroundColor: "#AAAFFD" },
+        ]}
+        onPress={() => setOpen((o) => !o)}
+      >
+        <Text
+          style={[
+            dropdownStyles.buttonText,
+            { textAlign: "center", color: "white", fontWeight: "bold" },
+          ]}
+        >
+          {Object.keys(selectedItems).length > 0
+            ? `${Object.keys(selectedItems).length} item(s) selected`
+            : "Select Items"}
+        </Text>
+        <Text style={[dropdownStyles.chevron, { color: "white" }]}>
+          {open ? "▲" : "▼"}
+        </Text>
+      </TouchableOpacity>
+
+      {open && (
+        <View style={dropdownStyles.listWrapper}>
+          <ScrollView
+            style={dropdownStyles.scroll}
+            nestedScrollEnabled
+            keyboardShouldPersistTaps="handled"
+          >
+            {itemOptions.map((opt) => (
+              <TouchableOpacity
+                key={opt}
+                style={dropdownStyles.item}
+                onPress={() => toggleItem(opt)}
+              >
+                <Text
+                  style={{
+                    fontSize: 16,
+                    color: selectedItems[opt] ? "#58bc82" : "#000",
+                  }}
+                >
+                  {selectedItems[opt] ? "☑" : "☐"} {opt}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+      {/* Selected Items with Inputs */}
+      {Object.keys(selectedItems).length > 0 && (
+        <View
+          style={{
+            marginTop: 12,
+            padding: 8,
+            borderWidth: 1,
+            borderColor: "#ccc",
+            borderRadius: 8,
+          }}
+        >
+          {/* Header */}
+          <View
+            style={{
+              flexDirection: "row",
+              borderBottomWidth: 1,
+              borderBottomColor: "#ccc",
+              paddingBottom: 6,
+              marginBottom: 8,
+            }}
+          >
+            <Text style={{ flex: 1.3, fontWeight: "bold", fontSize: 14 }}>
+              Item Name
+            </Text>
+            <Text
+              style={{
+                flex: 1,
+                fontWeight: "bold",
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
+              Unit Price
+            </Text>
+            <Text
+              style={{
+                flex: 1,
+                fontWeight: "bold",
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
+              Quantity
+            </Text>
+          </View>
+
+          {/* Rows */}
+          {Object.entries(selectedItems).map(([item, data]) => (
+            <View
+              key={item}
+              style={{
+                flexDirection: "row",
+                marginBottom: 8,
+                alignItems: "center",
+              }}
+            >
+              <Text style={{ flex: 1, fontSize: 16 }}>{item}</Text>
+
+              <TextInput
+                style={{
+                  flex: 0.6,
+                  marginHorizontal: 5,
+                  textAlign: "center",
+                  backgroundColor: "#ccc",
+                  borderRadius: 5,
+                }}
+                value={data.unitPrice}
+                onChangeText={(val) => updateField(item, "unitPrice", val)}
+                placeholder=""
+                keyboardType="numeric"
+              />
+              <TextInput
+                style={{
+                  flex: 0.6,
+                  marginHorizontal: 5,
+                  textAlign: "center",
+                  backgroundColor: "#ccc",
+                  borderRadius: 5,
+                }}
+                value={data.containers}
+                onChangeText={(val) => updateField(item, "containers", val)}
+                placeholder=""
+                keyboardType="numeric"
+              />
+            </View>
+          ))}
+
+          {/* Totals */}
+          <View
+            style={{
+              flexDirection: "row",
+              borderTopWidth: 1,
+              borderTopColor: "#ccc",
+              paddingTop: 6,
+              marginTop: 8,
+            }}
+          >
+            <Text style={{ flex: 1.3, fontWeight: "bold", fontSize: 14 }}>
+              Sub Total
+            </Text>
+
+            <Text
+              style={{
+                flex: 1,
+                fontWeight: "bold",
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
+              {Object.values(selectedItems).reduce(
+                (sum, item) => sum + (parseFloat(item.unitPrice) || 0),
+                0
+              )}
+            </Text>
+            <Text
+              style={{
+                flex: 1,
+                fontWeight: "bold",
+                fontSize: 14,
+                textAlign: "center",
+              }}
+            >
+              {Object.values(selectedItems).reduce(
+                (sum, item) => sum + (parseInt(item.containers) || 0),
+                0
+              )}
+            </Text>
+          </View>
+        </View>
+      )}
+    </View>
+  );
+};
 
 const TransactionForm = ({
   initialValues = {},
@@ -51,6 +261,8 @@ const TransactionForm = ({
   const [total, setTotal] = useState("");
   const [loggedUser, setLoggedUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+
+  const [selectedItems, setSelectedItems] = useState({}); // multiple item list
 
   const [transactionDate, setTransactionDate] = useState(
     initialValues.transactionDate
@@ -172,16 +384,7 @@ const TransactionForm = ({
     // clamp swap so it can't be greater than container
     if (s > n) s = n;
 
-    // base price
     const basePrice = u * (n > 0 ? n : 1);
-
-    // container charge = (container - swap) * 50
-
-    //removed
-    // const containerCharge = (n - s) * 50;
-    // const t = basePrice + containerCharge
-
-    // total
     const t = basePrice;
 
     setPrice(u ? u.toFixed(2) : "");
@@ -252,6 +455,36 @@ const TransactionForm = ({
   };
 
   const handleSubmit = async () => {
+
+    const itemsList = Object.entries(selectedItems).map(([name, data]) => ({
+      item_id: itemMap[name]?.id || 0,
+      item_name: name,
+      unit_price: Number(data.unitPrice) || 0,
+      quantity: Number(data.containers) || 0,
+      subtotal: (Number(data.unitPrice) || 0) * (Number(data.containers) || 0),
+    }));
+
+    const test = {
+      data: JSON.stringify({
+        user_id: loggedUser.id,
+        customer_name: customerName,
+        total_amount: Number(total),
+        payment: Number(payment) || 0,
+        wc_swap: wcSwap || 0,
+        pos_name: posName,
+        area_id: areaMap[area] || 0,
+        image_base64: signaturePath || null,
+        days_counter: Number(daysCounter) || 0,
+        notes: notes || null,
+        items: itemsList,
+      }),
+    };
+
+    console.log(test); // Final data format to be sent ----------------------------------------------------------->
+    
+
+    return;
+
     if (!loggedUser?.id) {
       Alert.alert("Error", "You must be logged in to create a transaction.");
       return;
@@ -259,22 +492,19 @@ const TransactionForm = ({
 
     setIsLoading(true);
 
-    if (
-      !customerName ||
-      !total ||
-      !payment ||
-      !itemName ||
-      !area ||
-      !container ||
-      !unitPrice
-    ) {
-      Alert.alert("Info", "Please fill all fields.");
+    // validation
+    if (!customerName || !area || items.length === 0 || !total) {
+      Alert.alert("Info", "Please fill all required fields.");
       setIsLoading(false);
       return;
     }
 
-    if (wcSwap > container) {
-      Alert.alert("Info", "Swap containers can't be greater than Containers");
+    if (wcSwap > totalQuantity) {
+      // calculate totalQuantity similar to total
+      Alert.alert(
+        "Info",
+        "Swap containers can't be greater than total containers."
+      );
       setIsLoading(false);
       return;
     }
@@ -294,29 +524,25 @@ const TransactionForm = ({
           data: JSON.stringify({
             user_id: loggedUser.id,
             customer_name: customerName,
-            container: Number(container) || 1,
             total_amount: Number(total),
             payment: Number(payment) || 0,
             wc_swap: wcSwap || 0,
             pos_name: posName,
             area_id: areaMap[area] || 0,
-            unit_price: Number(unitPrice),
             image_base64: signaturePath || null,
-            swap_container: Number(container),
             days_counter: Number(daysCounter) || 0,
             notes: notes || null,
-            item_id: itemMap[itemName].id,
+            items, // 👈 send the array of items
           }),
         }).toString(),
       });
+
       const json = await response.json();
 
       if (json.status === "success") {
         Alert.alert("Success", "Transaction created successfully!");
-        // print
         await receiptRef.current.printReceipt();
         handleCancel();
-        // router.push("./MainScreen");
       } else {
         Alert.alert("Error", json.message || "Something went wrong.");
         console.log(json);
@@ -372,26 +598,15 @@ const TransactionForm = ({
     setShowSuggestions(false);
   };
 
-  /* ---------- Transaction Date Picker ---------- */
-  // const formatDate = (date) => {
-  //   const d = new Date(date);
-  //   const month = (d.getMonth() + 1).toString().padStart(2, "0");
-  //   const day = d.getDate().toString().padStart(2, "0");
-  //   const year = d.getFullYear();
-  //   return `${year}-${month}-${day}`; // YYYY-MM-DD
-  // };
-
-  // const handleDateChange = (event, selectedDate) => {
-  //   setShowDatePicker(false);
-
-  //   if (selectedDate) {
-  //     setTransactionDate(selectedDate); // update state
-  //     Alert.alert(
-  //       "Selected Date",
-  //       selectedDate.toDateString() // show readable date
-  //     );
-  //   }
-  // };
+  useEffect(() => {
+    const sum = Object.values(selectedItems).reduce(
+      (acc, item) =>
+        acc +
+        (parseFloat(item.unitPrice) || 0) * (parseInt(item.containers) || 0),
+      0
+    );
+    setTotal(sum.toFixed(2));
+  }, [selectedItems]);
 
   return (
     <KeyboardAvoidingView
@@ -446,20 +661,26 @@ const TransactionForm = ({
           keyboardType="numeric"
         />
 
-        <FormField
+        {/* <FormField
           label="No. of Container"
           value={container}
           onChangeText={setContainer}
           placeholder="0"
           keyboardType="numeric"
-        />
+        /> */}
 
-        <Dropdown
+        {/* <Dropdown
           label="Item Name"
           selected={itemName}
           onSelect={setItemName}
           options={itemOptions}
           placeholder="Select item"
+        /> */}
+
+        <ItemSelector
+          itemOptions={itemOptions}
+          selectedItems={selectedItems}
+          setSelectedItems={setSelectedItems}
         />
 
         {/* <Dropdown
@@ -479,7 +700,7 @@ const TransactionForm = ({
         />
 
         <Row>
-          <FormField
+          {/* <FormField
             flex
             label="Unit Price"
             value={unitPrice}
@@ -488,8 +709,9 @@ const TransactionForm = ({
             keyboardType="numeric"
             editable={true}
             compact
-          />
-          <Spacer />
+          /> */}
+          {/* <Spacer /> */}
+
           <FormField
             flex
             label="Total Amount"
@@ -742,7 +964,11 @@ const dropdownStyles = StyleSheet.create({
     justifyContent: "space-between",
   },
   buttonOpen: { borderColor: "#58bc82" },
-  buttonText: { flex: 1, color: "#000", fontSize: 16 },
+  buttonText: {
+    flex: 1,
+    color: "#000",
+    fontSize: 16,
+  },
   placeholderText: { color: "#999" },
   chevron: { marginLeft: 8, fontSize: 12, color: "#777" },
   listWrapper: {
