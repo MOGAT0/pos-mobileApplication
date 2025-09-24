@@ -68,7 +68,6 @@ const Login = () => {
           });
 
           const result = await response.json();
-          // console.log("Auto-login verification result:", result);
 
           if (
             result.response &&

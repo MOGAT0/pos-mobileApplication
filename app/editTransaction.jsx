@@ -41,7 +41,7 @@ const EditTransaction = () => {
   const [total, setTotal] = useState("");
   const [daysCounter, setDaysCounter] = useState("");
 
-  const [isLoading,setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const receiptRef = useRef(null);
 
@@ -95,8 +95,8 @@ const EditTransaction = () => {
         setTotal(t.total_amount);
         setDaysCounter(t.days_counter);
 
+        console.log("shit");
         console.log(t);
-        
       } else {
         console.warn("No transaction found");
       }
@@ -160,7 +160,7 @@ const EditTransaction = () => {
     } catch (error) {
       console.log(error);
       Alert.alert("Error", "Something went wrong");
-    } finally{
+    } finally {
       setIsLoading(false);
     }
   };
@@ -175,7 +175,7 @@ const EditTransaction = () => {
       }}
       keyboardShouldPersistTaps="handled"
     >
-      <Loading visible={isLoading}/>
+      <Loading visible={isLoading} />
       <View style={styles.headerRow}>
         <TouchableOpacity
           style={styles.backbtnwrapper}
@@ -186,7 +186,7 @@ const EditTransaction = () => {
             style={styles.backIcon}
           />
         </TouchableOpacity>
-        <Text style={styles.header}>Edit Transaction</Text>
+        <Text style={styles.header}>Transaction Details</Text>
       </View>
 
       <View style={styles.container}>
@@ -223,17 +223,46 @@ const EditTransaction = () => {
 
         <Text style={styles.label}>Preview:</Text>
         <View style={styles.previewContainer}>
+          <Text style={styles.previewLabel}>Transaction History:</Text>
+
+          <Text style={styles.previewValue}>
+            {new Date(createdAt.replace(" ", "T")).toLocaleString(
+              "en-US",
+              {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true,
+              }
+            )}
+          </Text>
+
           <Text style={styles.previewLabel}>Customer Name:</Text>
           <Text style={styles.previewValue}>{customerName}</Text>
 
-          <Text style={styles.previewLabel}>Area:</Text>
-          <Text style={styles.previewValue}>{areaName}</Text>
+          <Text style={styles.previewLabel}>Balance:</Text>
+          <Text style={[styles.previewValue, { color: "red" }]}>{balance}</Text>
 
           <Text style={styles.previewLabel}>Item:</Text>
           <Text style={styles.previewValue}>{itemName}</Text>
 
-          <Text style={styles.previewLabel}>Balance:</Text>
-          <Text style={[styles.previewValue, { color: "red" }]}>{balance}</Text>
+          <Text style={styles.previewLabel}>Quantity:</Text>
+          <Text style={styles.previewValue}>{container}</Text>
+
+          <Text style={styles.previewLabel}>Unit Price:</Text>
+          <Text style={styles.previewValue}>{unitPrice}</Text>
+
+          <Text style={styles.previewLabel}>Area:</Text>
+          <Text style={styles.previewValue}>{areaName}</Text>
+
+          <Text style={styles.previewLabel}>Swap:</Text>
+          <Text style={styles.previewValue}>{wcSwap}</Text>
+
+          <Text style={styles.previewLabel}>Number of Days:</Text>
+          <Text style={styles.previewValue}>{daysCounter}</Text>
+
         </View>
       </View>
 

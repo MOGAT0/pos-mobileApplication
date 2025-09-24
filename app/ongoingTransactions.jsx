@@ -147,7 +147,6 @@ const OngoingTransactions = () => {
 
   /**  Fetch Areas */
   const fetchAreas = async () => {
-
     try {
       // Show loading placeholder first
       setAreas(["Loading..."]);
@@ -164,7 +163,7 @@ const OngoingTransactions = () => {
       const data = await res.json();
 
       if (data.response.ok && data.response.areas) {
-        setAreas([ { id: "all", name: "All" } , ...data.response.areas]);
+        setAreas([{ id: "all", name: "All" }, ...data.response.areas]);
       } else {
         console.warn("Failed to fetch areas");
       }
@@ -216,7 +215,7 @@ const OngoingTransactions = () => {
     if (apiUrl) {
       fetchAreas();
     }
-  },[apiUrl]);
+  }, [apiUrl]);
 
   useEffect(() => {
     if (apiUrl && (area || search)) {
@@ -295,6 +294,8 @@ const OngoingTransactions = () => {
             Object.keys(groupedTransactions).map((customer, idx) => {
               const transactionsForCustomer = groupedTransactions[customer];
               const latestRow = transactionsForCustomer[0];
+              console.log(transactionsForCustomer[0]);
+
               const totalBalance = getLatestBalance(transactionsForCustomer);
 
               return (
@@ -314,10 +315,12 @@ const OngoingTransactions = () => {
                   <Text
                     style={{ fontWeight: "bold", fontSize: 16, color: "#333" }}
                   >
-                    {customer}
+                    Customer: {customer}
                   </Text>
-                  <Text style={{ color: "#555" }}>{latestRow.area_name}</Text>
-                  <Text
+
+                  <Text style={{ color: "#555" }}>Area: {latestRow.name}</Text>
+
+                  {/* <Text
                     style={{
                       color: "#9b0000ff",
                       fontWeight: "bold",
@@ -325,10 +328,10 @@ const OngoingTransactions = () => {
                     }}
                   >
                     Balance: {totalBalance.toFixed(2)}
-                  </Text>
+                  </Text> */}
 
                   <ScrollView
-                    style={{ maxHeight: 120, paddingVertical: 4 }}
+                    style={{ maxHeight: 150, paddingVertical: 4 }}
                     nestedScrollEnabled={true}
                   >
                     {transactionsForCustomer.map((order, oIdx) => (
@@ -344,18 +347,34 @@ const OngoingTransactions = () => {
                           borderColor: "#e0e0e0",
                         }}
                       >
-                        <Text style={{ color: "#333", flex: 1 }}>
-                          {order.item_name}
-                        </Text>
-                        <Text
-                          style={{
-                            fontWeight: "600",
-                            color: "#222",
-                            marginRight: 10,
-                          }}
-                        >
-                          {order.total_amount}
-                        </Text>
+                        <View>
+                          <Text style={{ color: "#555" }}>
+                            Date:{" "}
+                            {new Date(
+                              order.created_at.replace(" ", "T")
+                            ).toLocaleString("en-US", {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            })}
+                          </Text>
+                          <Text style={{ color: "#333", flex: 1 }}>
+                            Item name: {order.item_name}
+                          </Text>
+
+                          <Text
+                            style={{
+                              color: "#9b0000ff",
+                              fontWeight: "bold",
+                              marginBottom: 8,
+                            }}
+                          >
+                            Balance: {order.balance}
+                          </Text>
+                        </View>
 
                         {/* Edit Button */}
                         <TouchableOpacity
