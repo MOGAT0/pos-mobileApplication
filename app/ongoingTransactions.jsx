@@ -51,8 +51,6 @@ const SearchBox = ({
   </View>
 );
 
-
-
 /* ------------------------------------------------------------------
  * Area Dropdown (Stores ID but Displays Name)
  * ------------------------------------------------------------------ */
@@ -65,7 +63,6 @@ const AreaDropdown = ({
 }) => {
   const [open, setOpen] = useState(false);
 
-
   const handlePick = (area) => {
     onSelect(area.id);
     setOpen(false);
@@ -73,12 +70,8 @@ const AreaDropdown = ({
 
   const selectedAreaName = areas.find((a) => a.id === selected)?.name || "";
 
-
-
-
   return (
     <View style={[dropdownStyles.wrapper, style]}>
-
       <TouchableOpacity
         style={[dropdownStyles.button, open && dropdownStyles.buttonOpen]}
         onPress={() => setOpen((o) => !o)}
@@ -144,18 +137,20 @@ const OngoingTransactions = () => {
   const [loading, setLoading] = useState(false);
   const [apiUrl, setapiUrl] = useState("");
 
-  const fetchAPI = async () =>{
+  const fetchAPI = async () => {
     const api_url = await Config.getApiUrl();
     setapiUrl(api_url);
-  }
+  };
   useEffect(() => {
     fetchAPI();
-  },[])
-
+  }, []);
 
   /**  Fetch Areas */
   const fetchAreas = async () => {
+
     try {
+      // Show loading placeholder first
+      setAreas(["Loading..."]);
       const res = await fetch(`${apiUrl}?command=fetch_areas`, {
         method: "POST",
         headers: {
@@ -169,7 +164,7 @@ const OngoingTransactions = () => {
       const data = await res.json();
 
       if (data.response.ok && data.response.areas) {
-        setAreas(data.response.areas);
+        setAreas([ { id: "all", name: "All" } , ...data.response.areas]);
       } else {
         console.warn("Failed to fetch areas");
       }
@@ -184,7 +179,10 @@ const OngoingTransactions = () => {
       setTransactions([]);
       return;
     }
-    // search, area
+
+    // If "all" is selected, treat it as no filter
+    const areaFilter = area === "all" ? "" : area;
+
     setLoading(true);
     try {
       const res = await fetch(`${apiUrl}?command=fetch_transactions`, {
@@ -193,7 +191,7 @@ const OngoingTransactions = () => {
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: new URLSearchParams({
-          data: JSON.stringify({ search, area }),
+          data: JSON.stringify({ search, area: areaFilter }),
         }).toString(),
       });
 
@@ -215,10 +213,10 @@ const OngoingTransactions = () => {
   };
 
   useEffect(() => {
-    if(apiUrl){
+    if (apiUrl) {
       fetchAreas();
     }
-  });
+  },[apiUrl]);
 
   useEffect(() => {
     if (apiUrl && (area || search)) {
@@ -226,7 +224,7 @@ const OngoingTransactions = () => {
     } else {
       setTransactions([]);
     }
-  }, [apiUrl ,area, search]);
+  }, [apiUrl, area, search]);
 
   const handleSearchSubmit = () => {
     fetchTransactions();
@@ -249,7 +247,6 @@ const OngoingTransactions = () => {
     const prevBalance = parseFloat(latest.previous_balance || 0);
     return balance;
   };
-  
 
   return (
     <View style={styles.container}>
@@ -329,7 +326,6 @@ const OngoingTransactions = () => {
                   >
                     Balance: {totalBalance.toFixed(2)}
                   </Text>
-                  
 
                   <ScrollView
                     style={{ maxHeight: 120, paddingVertical: 4 }}
@@ -362,11 +358,13 @@ const OngoingTransactions = () => {
                         </Text>
 
                         {/* Edit Button */}
-                        <TouchableOpacity 
-                          onPress={() => router.push({
-                            pathname: "./editTransaction",
-                            params: { id: order.id },
-                          })}
+                        <TouchableOpacity
+                          onPress={() =>
+                            router.push({
+                              pathname: "./editTransaction",
+                              params: { id: order.id },
+                            })
+                          }
                           style={{
                             backgroundColor: "#58bc82",
                             paddingVertical: 4,

@@ -1,92 +1,109 @@
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert } from 'react-native'
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigation } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import Config from '../components/config'
 import { router } from 'expo-router'
+import Loading from '../components/loading';
 
 const Setting = () => {
-  const [apiUrl, setApiUrl] = useState('')
-  const [posName, setPosName] = useState('')
-  const [isEditing, setIsEditing] = useState(false)
+  const [apiBase, setApiBase] = useState('');
+  const [posTerminalName, setPosTerminalName] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const navigation = useNavigation()
+  const navigation = useNavigation();
+
+  //  Load saved values
+  useEffect(() => {
+    const loadConfig = async () => {
+      const savedFullApi = await Config.getApiUrl();
+      const savedPos = await Config.getPosName();
+
+      if (savedFullApi) {
+        // strip down to base IP/domain
+        const match = savedFullApi.match(/^https?:\/\/([^/]+)/);
+        if (match) setApiBase(match[1]);
+      }
+      if (savedPos) setPosTerminalName(savedPos);
+    };
+    loadConfig();
+  }, []);
+
+  // Always reconstruct full URL before use
+  const getFullApiUrl = () => {
+    return `http://${apiBase}/pos_backend/endpoint.php`;
+  };
 
   const handleTestConnection = async () => {
+    setIsLoading(true);
     try {
-      const response = await fetch(`${apiUrl}?command=test_API`,{
-        method:"POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({
-          data: JSON.stringify({}),
-        }).toString(),
-      })
+      const response = await fetch(`${getFullApiUrl()}?command=test_API`, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ data: JSON.stringify({}) }).toString(),
+      });
 
       const data = await response.json();
 
-      if(data.response.ok){
-        Alert.alert("Success","Connected to API Successfully!");
-      }else{
-        Alert.alert("Warning","Unable to connect to API please try again")
+      if (data.response?.ok) {
+        Alert.alert("Success", `Connected to API: \n${apiBase}`);
+      } else {
+        Alert.alert("Warning", `Unable to connect to: \n${apiBase}`);
       }
     } catch (error) {
-      Alert.alert("Warning",`Unable to connect to API please try again`)
-      
+      Alert.alert("Error", `Invalid API \n${apiBase}`);
+    }finally{
+      setIsLoading(false);
     }
-  }
+  };
 
   const saveConfig = async () => {
-    Config.setApiUrl(apiUrl);
-    Config.setPosName(posName);
+    // save the full API
+    await Config.setApiUrl(getFullApiUrl());
+    await Config.setPosName(posTerminalName);
 
-    
     const GetapiUrl = await Config.getApiUrl();
     const GetposName = await Config.getPosName();
-    
-    if(GetapiUrl && GetposName){
-      Alert.alert("Success","Saved")
-    }else{
-      Alert.alert("Warning","Unable to save \nMake sure to fill all fields")
-    }
 
-  }
+    if (GetapiUrl && GetposName) {
+      Alert.alert("Success", `Saved: \n${apiBase}`);
+    } else {
+      Alert.alert("Warning", "Unable to save \nMake sure to fill all fields");
+    }
+  };
 
   return (
     <View style={styles.container}>
-      {/* Top bar with back and edit */}
+      {/* Top bar */}
       <View style={styles.topBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
           <Ionicons name="arrow-back" size={28} color="#333" />
         </TouchableOpacity>
 
         <Text style={styles.header}>Settings</Text>
+        <Loading visible={isLoading}/>
 
         <TouchableOpacity onPress={() => {
           setIsEditing(!isEditing)
-          if (isEditing) {
-            saveConfig();
-          }
+          if (isEditing) saveConfig();
         }} style={styles.iconButton}>
-
           <Ionicons name={isEditing ? "checkmark" : "create-outline"} size={26} color="#333" />
         </TouchableOpacity>
       </View>
 
-      {/* API URL */}
+      {/* API Base */}
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>API URL</Text>
+        <Text style={styles.label}>API Base (IP / Domain)</Text>
         {isEditing ? (
           <TextInput
             style={styles.input}
-            placeholder="Enter API URL"
-            value={apiUrl}
-            onChangeText={setApiUrl}
-            
+            placeholder="e.g. 192.168.194.92"
+            value={apiBase}
+            onChangeText={setApiBase}
           />
         ) : (
-          <Text style={styles.displayText}>{apiUrl}</Text>
+          <Text style={styles.displayText}>{apiBase}</Text>
         )}
       </View>
 
@@ -97,21 +114,22 @@ const Setting = () => {
           <TextInput
             style={styles.input}
             placeholder="Enter POS Name"
-            value={posName}
-            onChangeText={setPosName}
+            value={posTerminalName}
+            onChangeText={setPosTerminalName}
           />
         ) : (
-          <Text style={styles.displayText}>{posName}</Text>
+          <Text style={styles.displayText}>{posTerminalName}</Text>
         )}
       </View>
 
-      {/* Test Button (only active in edit mode or always?) */}
+      {/* Test Button */}
       <TouchableOpacity style={styles.button} onPress={handleTestConnection}>
         <Text style={styles.buttonText}>Test Connection</Text>
       </TouchableOpacity>
     </View>
   )
 }
+
 
 export default Setting
 

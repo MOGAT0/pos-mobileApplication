@@ -9,30 +9,30 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { saveUser, getUser, clearUser } from "../components/ss_login";
-import Ionicons from "react-native-vector-icons/Ionicons";
+import { saveUser } from "../components/ss_login";
 import Config from "../components/config";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
-const Login = () => {
+const AdminLogin = () => {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loggingIn, setLoggingIn] = useState(false);
-  const [apiUrl, setapiUrl] = useState("");
+  const [apiUrl, setApiUrl] = useState("");
 
   /** fetch api url (recursive until available) */
   useEffect(() => {
     let isMounted = true;
 
-
     const fetchAPI = async () => {
       const api_url = await Config.getApiUrl();
       if (isMounted) {
         if (api_url) {
-          setapiUrl(api_url);
-          // console.log(api_url);
+          setApiUrl(api_url);
+          console.log("API URL:", api_url);
+          setLoading(false);
         } else {
           setTimeout(fetchAPI, 1000);
         }
@@ -44,57 +44,6 @@ const Login = () => {
       isMounted = false;
     };
   }, []);
-
-  /* auto-login if user has login data */
-  useEffect(() => {
-    
-    const checkLoggedUser = async () => {
-      try {
-        const user = await getUser();
-
-        if (user) {
-          // console.log("Found saved user, verifying credentials:", user);
-
-          // Verify saved user with server
-          const response = await fetch(`${apiUrl}?command=login`, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              data: JSON.stringify({
-                username: user.username,
-                password: user.password,
-              }),
-            }).toString(),
-          });
-
-          const result = await response.json();
-          // console.log("Auto-login verification result:", result);
-
-          if (
-            result.response &&
-            result.response.ok &&
-            result.response.user.user_type.toLowerCase() === "employee"
-          ) {
-            console.log("Auto Login Success!");
-            
-            Alert.alert("Success", "Login successfully!");
-            router.replace("/MainScreen");
-          } else {
-            console.log("Saved credentials invalid, clearing saved data.");
-            // Optional: clear invalid saved user
-            await saveUser(null);
-          }
-        }
-      } catch (err) {
-        console.log("Error verifying saved user:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (apiUrl) checkLoggedUser();
-
-  }, [apiUrl]);
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -114,16 +63,16 @@ const Login = () => {
       });
 
       const result = await response.json();
-      // console.log("Login Response:", result);
+      console.log("Admin Login Response:", result);
 
       if (
         result.response &&
         result.response.ok &&
-        result.response.user.user_type.toLowerCase() === "employee"
+        result.response.user.user_type.toLowerCase() === "admin"
       ) {
         Alert.alert("Success", "Login successful!");
         await saveUser(result.response.user);
-        router.replace("/MainScreen");
+        router.replace("dashboardTab");
       } else {
         Alert.alert("Invalid credentials");
       }
@@ -136,19 +85,17 @@ const Login = () => {
   };
 
   if (loading) {
-    // while checking SecureStore for auto-login
+    // while fetching API URL
     return (
       <View style={styles.loaderWrapper}>
-        <ActivityIndicator size="large" color="#58bc82" />
+        <ActivityIndicator size="large" color="green" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <Text style={styles.headertxt}>Login</Text>
-      </View>
+      <Text style={styles.title}>Admin Login</Text>
 
       <View style={styles.formWrapper}>
         <View style={styles.form}>
@@ -167,10 +114,7 @@ const Login = () => {
             <Text style={styles.label}>Password</Text>
             <View style={styles.passwordWrapper}>
               <TextInput
-                style={[
-                  styles.input,
-                  { flex: 1, borderWidth: 0, marginBottom: 0 },
-                ]}
+                style={[styles.input, { flex: 1, borderWidth: 0, marginBottom: 0 }]}
                 placeholder="Enter your password"
                 placeholderTextColor="#9c9c9c"
                 secureTextEntry={!showPassword}
@@ -205,37 +149,30 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default AdminLogin;
 
 const styles = StyleSheet.create({
   container: {
-    padding: 10,
     flex: 1,
+    padding: 10,
     backgroundColor: "#f0f0f0",
+    justifyContent: "flex-start",
+    paddingTop:50
   },
   loaderWrapper: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "flex-start",
-    height: 60,
-    paddingHorizontal: 10,
-    marginTop: 10,
-  },
-  headertxt: {
-    fontSize: 25,
-    fontWeight: "600",
-    color: "#3f3151",
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "green",
+    marginBottom: 30,
   },
   formWrapper: {
-    flex: 1,
-    justifyContent: "center",
     alignItems: "center",
-    marginTop: -120,
   },
   form: {
     backgroundColor: "#fff",
@@ -243,24 +180,24 @@ const styles = StyleSheet.create({
     padding: 20,
     width: "100%",
     maxWidth: 400,
-    alignSelf: "center",
   },
   inputGroup: {
     marginBottom: 16,
   },
   label: {
-    color: "#58bc82",
+    color: "green",
     fontWeight: "600",
     marginBottom: 6,
   },
   input: {
-    backgroundColor: "#9c9c9c60",
+    backgroundColor: "#9c9c9c40",
     borderRadius: 8,
     paddingVertical: 14,
     paddingHorizontal: 12,
     color: "#000",
     borderWidth: 2,
     borderColor: "#707070",
+    marginBottom: 10,
   },
   passwordWrapper: {
     flexDirection: "row",
@@ -268,7 +205,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#707070",
     borderRadius: 8,
-    backgroundColor: "#9c9c9c60",
+    backgroundColor: "#9c9c9c40",
     paddingHorizontal: 8,
   },
   eyeButton: {
@@ -277,14 +214,13 @@ const styles = StyleSheet.create({
   button: {
     paddingVertical: 14,
     borderRadius: 50,
-    backgroundColor: "#707070",
+    backgroundColor: "green",
     alignItems: "center",
     marginTop: 16,
-    marginBottom: 10,
   },
   buttonText: {
-    color: "#efefef",
+    color: "#fff",
     fontWeight: "600",
-    fontSize: 14,
+    fontSize: 16,
   },
 });

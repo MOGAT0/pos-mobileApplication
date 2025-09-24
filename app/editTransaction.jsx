@@ -15,6 +15,7 @@ import { API_BASE_URL } from "@env";
 import { getUser } from "../components/ss_login";
 import Receipt from "../components/receipt";
 import Config from "../components/config";
+import Loading from "../components/loading";
 
 const EditTransaction = () => {
   const { id } = useLocalSearchParams();
@@ -39,6 +40,8 @@ const EditTransaction = () => {
   const [unitPrice, setUnitPrice] = useState("");
   const [total, setTotal] = useState("");
   const [daysCounter, setDaysCounter] = useState("");
+
+  const [isLoading,setIsLoading] = useState(false);
 
   const receiptRef = useRef(null);
 
@@ -127,6 +130,7 @@ const EditTransaction = () => {
   }
 
   const handle_updateBalance = async () => {
+    setIsLoading(true);
     try {
       const response = await fetch(`${apiUrl}?command=update_balance`, {
         method: "POST",
@@ -149,14 +153,15 @@ const EditTransaction = () => {
       if (data.response.ok) {
         Alert.alert("Success", "Updated Successfully");
         await receiptRef.current.printReceipt();
-
-        router.push("./MainScreen");
+        router.replace("MainScreen");
       } else {
         Alert.alert("Error", "Update Error");
       }
     } catch (error) {
       console.log(error);
       Alert.alert("Error", "Something went wrong");
+    } finally{
+      setIsLoading(false);
     }
   };
 
@@ -170,6 +175,7 @@ const EditTransaction = () => {
       }}
       keyboardShouldPersistTaps="handled"
     >
+      <Loading visible={isLoading}/>
       <View style={styles.headerRow}>
         <TouchableOpacity
           style={styles.backbtnwrapper}
@@ -233,6 +239,7 @@ const EditTransaction = () => {
 
       <View style={{ height: 0, width: 0, opacity: 0 }}>
         <Receipt
+          item_name={itemName}
           ref={receiptRef}
           customer_name={customerName}
           swap={wcSwap}

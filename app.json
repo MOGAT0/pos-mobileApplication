@@ -1,7 +1,7 @@
 {
   "expo": {
-    "scheme": "pos-mobile",
-    "name": "pos-mobile",
+    "scheme": "pos-mobile-employee",
+    "name": "pos-mobile-employee",
     "slug": "pos-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -22,7 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.anonymous.posmobile"
+      "package": "com.anonymous.posmobile-employee"
     },
     "web": {
       "favicon": "./assets/favicon.png"

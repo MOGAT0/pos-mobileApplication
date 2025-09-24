@@ -10,7 +10,7 @@ const MainScreen = ({ navigation }) => {
     const handleLogout = async ()=>{
         
         clearUser();
-        router.replace("login");
+        router.dismissAll();
     }
 
     return( 

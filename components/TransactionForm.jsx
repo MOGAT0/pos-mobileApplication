@@ -18,7 +18,7 @@ import Receipt from "./receipt";
 import { getUser } from "./ss_login";
 import { router } from "expo-router";
 import Config from "./config";
-import DateTimePicker from "@react-native-community/datetimepicker";
+import Loading from "./loading";
 
 const TransactionForm = ({
   initialValues = {},
@@ -30,7 +30,7 @@ const TransactionForm = ({
   /*--- table info ---*/
   const [customerName, setCustomerName] = useState("");
   const [container, setContainer] = useState("");
-  const [payment, setPayment] = useState("");
+  const [payment, setPayment] = useState("0.00");
   const [balance, setBalance] = useState("");
   const [previousBalance, setPreviousBalance] = useState("0.00");
   const [wcSwap, setWcSwap] = useState("");
@@ -41,7 +41,7 @@ const TransactionForm = ({
   const [areaId, setAreaId] = useState("");
   const [unitPrice, setUnitPrice] = useState("");
   const [imageBase64, setImageBase64] = useState("");
-  const [swapContainer, setSwapContainer] = useState("");
+  // const [swapContainer, setSwapContainer] = useState("");
   const [daysCounter, setDaysCounter] = useState("");
   const [notes, setNotes] = useState("");
   const [price, setPrice] = useState(null);
@@ -50,6 +50,7 @@ const TransactionForm = ({
   const [itemMap, setItemMap] = useState({});
   const [total, setTotal] = useState("");
   const [loggedUser, setLoggedUser] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [transactionDate, setTransactionDate] = useState(
     initialValues.transactionDate
@@ -62,7 +63,7 @@ const TransactionForm = ({
   const [signatureStrokes, setSignatureStrokes] = useState([]);
   const [signaturePath, setSignaturePath] = useState("");
 
-  const DAYS_OPTIONS = Array.from({ length: 31 }, (_, i) => String(i + 1));
+  const DAYS_OPTIONS = Array.from({ length: 367 }, (_, i) => String(i));
 
   /* --- for auto complete name --- */
   const [customerSuggestions, setCustomerSuggestions] = useState([]);
@@ -73,6 +74,8 @@ const TransactionForm = ({
   useEffect(() => {
     const fetchAPI = async () => {
       const api_url = await Config.getApiUrl();
+      const pos_name = await Config.getPosName();
+      setPosName(pos_name);
       setapiUrl(api_url);
     };
     fetchAPI();
@@ -90,16 +93,13 @@ const TransactionForm = ({
     fetchLoggedUser();
   }, []);
 
-  useEffect(() => {
-    if (itemName && itemMap[itemName]) {
-      setUnitPrice(String(itemMap[itemName].unit_price || 0));
-    }
-  }, [itemName]);
-
   /*  Fetch Items & Areas */
 
   const fetchOptions = async () => {
     try {
+      // Show loading placeholder first
+      setItemOptions(["Loading..."]);
+      setAreaOptions(["Loading..."]);
       //  Fetch Items
       const itemRes = await fetch(`${apiUrl}?command=fetch_items`, {
         method: "POST",
@@ -159,17 +159,34 @@ const TransactionForm = ({
     if (apiUrl) {
       fetchOptions();
     }
-  });
+  }, [apiUrl]);
 
   /* ---------- Auto Calculations ---------- */
   useEffect(() => {
     if (!autoCalc) return;
+
     const u = parseFloat(unitPrice) || 0;
     const n = parseFloat(container) || 0;
-    const t = u * (n > 0 ? n : 1);
+    let s = parseFloat(wcSwap) || 0;
+
+    // clamp swap so it can't be greater than container
+    if (s > n) s = n;
+
+    // base price
+    const basePrice = u * (n > 0 ? n : 1);
+
+    // container charge = (container - swap) * 50
+
+    //removed
+    // const containerCharge = (n - s) * 50;
+    // const t = basePrice + containerCharge
+
+    // total
+    const t = basePrice;
+
     setPrice(u ? u.toFixed(2) : "");
     setTotal(t ? t.toFixed(2) : "");
-  }, [unitPrice, container, autoCalc]);
+  }, [unitPrice, container, wcSwap, autoCalc]);
 
   /* ---------- Memo form state & notify parent ---------- */
   const formState = useMemo(
@@ -229,7 +246,7 @@ const TransactionForm = ({
     setUnitPrice("");
     setPrice("");
     setTotal("");
-    setPayment("");
+    setPayment("0");
     handleSignatureClear();
     onCancel?.();
   };
@@ -240,8 +257,25 @@ const TransactionForm = ({
       return;
     }
 
-    if (!customerName || !total || !payment || !itemName || !area) {
-      Alert.alert("Error", "Please fill all required fields.");
+    setIsLoading(true);
+
+    if (
+      !customerName ||
+      !total ||
+      !payment ||
+      !itemName ||
+      !area ||
+      !container ||
+      !unitPrice
+    ) {
+      Alert.alert("Info", "Please fill all fields.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (wcSwap > container) {
+      Alert.alert("Info", "Swap containers can't be greater than Containers");
+      setIsLoading(false);
       return;
     }
 
@@ -260,16 +294,16 @@ const TransactionForm = ({
           data: JSON.stringify({
             user_id: loggedUser.id,
             customer_name: customerName,
-            container: Number(container),
+            container: Number(container) || 1,
             total_amount: Number(total),
-            payment: Number(payment),
+            payment: Number(payment) || 0,
             wc_swap: wcSwap || 0,
             pos_name: posName,
             area_id: areaMap[area] || 0,
             unit_price: Number(unitPrice),
             image_base64: signaturePath || null,
             swap_container: Number(container),
-            days_counter: Number(daysCounter),
+            days_counter: Number(daysCounter) || 0,
             notes: notes || null,
             item_id: itemMap[itemName].id,
           }),
@@ -282,7 +316,7 @@ const TransactionForm = ({
         // print
         await receiptRef.current.printReceipt();
         handleCancel();
-        router.push("./MainScreen");
+        // router.push("./MainScreen");
       } else {
         Alert.alert("Error", json.message || "Something went wrong.");
         console.log(json);
@@ -290,6 +324,8 @@ const TransactionForm = ({
     } catch (err) {
       console.log("Submit Error:", err);
       Alert.alert("Error", `Network or server error: ${err.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -337,25 +373,25 @@ const TransactionForm = ({
   };
 
   /* ---------- Transaction Date Picker ---------- */
-  const formatDate = (date) => {
-    const d = new Date(date);
-    const month = (d.getMonth() + 1).toString().padStart(2, "0");
-    const day = d.getDate().toString().padStart(2, "0");
-    const year = d.getFullYear();
-    return `${year}-${month}-${day}`; // YYYY-MM-DD
-  };
+  // const formatDate = (date) => {
+  //   const d = new Date(date);
+  //   const month = (d.getMonth() + 1).toString().padStart(2, "0");
+  //   const day = d.getDate().toString().padStart(2, "0");
+  //   const year = d.getFullYear();
+  //   return `${year}-${month}-${day}`; // YYYY-MM-DD
+  // };
 
-  const handleDateChange = (event, selectedDate) => {
-    setShowDatePicker(false);
+  // const handleDateChange = (event, selectedDate) => {
+  //   setShowDatePicker(false);
 
-    if (selectedDate) {
-      setTransactionDate(selectedDate); // update state
-      Alert.alert(
-        "Selected Date",
-        selectedDate.toDateString() // show readable date
-      );
-    }
-  };
+  //   if (selectedDate) {
+  //     setTransactionDate(selectedDate); // update state
+  //     Alert.alert(
+  //       "Selected Date",
+  //       selectedDate.toDateString() // show readable date
+  //     );
+  //   }
+  // };
 
   return (
     <KeyboardAvoidingView
@@ -363,6 +399,7 @@ const TransactionForm = ({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={80}
     >
+      <Loading visible={isLoading} />
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -392,29 +429,6 @@ const TransactionForm = ({
             </View>
           )}
         </View>
-
-        {/* Transaction Date Picker */}
-
-        {/* <View style={{ marginBottom: 16 }}>
-          <Text style={fieldStyles.label}>Transaction Date</Text>
-          <TouchableOpacity
-            style={[fieldStyles.input, { justifyContent: "center" }]}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={{ fontSize: 16, color: "#000" }}>
-              {formatDate(transactionDate)}
-            </Text>
-          </TouchableOpacity>
-
-          {showDatePicker && (
-            <DateTimePicker
-              value={transactionDate}
-              mode="date"
-              display={Platform.OS === "ios" ? "spinner" : "default"}
-              onChange={handleDateChange}
-            />
-          )}
-        </View> */}
 
         <Dropdown
           label="Area"
@@ -448,12 +462,20 @@ const TransactionForm = ({
           placeholder="Select item"
         />
 
-        <Dropdown
+        {/* <Dropdown
           label="Number of Days"
           selected={daysCounter}
           onSelect={setDaysCounter}
           options={DAYS_OPTIONS}
           placeholder="Select days"
+        /> */}
+
+        <FormField
+          label="Number of Days"
+          value={daysCounter}
+          onChangeText={setDaysCounter}
+          placeholder="0"
+          keyboardType="numeric"
         />
 
         <Row>
@@ -464,7 +486,7 @@ const TransactionForm = ({
             onChangeText={setUnitPrice}
             placeholder="0.00"
             keyboardType="numeric"
-            editable={false}
+            editable={true}
             compact
           />
           <Spacer />
@@ -547,6 +569,7 @@ const TransactionForm = ({
             ref={receiptRef}
             customer_name={customerName}
             swap={wcSwap}
+            item_name={itemName}
             container_qty={container}
             unit_price={unitPrice}
             total_amount={total}

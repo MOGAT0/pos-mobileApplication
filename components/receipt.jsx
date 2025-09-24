@@ -18,14 +18,14 @@ const Receipt = forwardRef((props, ref) => {
     return `
       <div style="text-align:center; font-family:monospace; white-space:pre; font-size:12px; line-height:1.1;">
 OFFICIAL RECEIPT
-DHILLON & SEKHON TRADING
-CORPORATION
+GS FOOD PRODUCTS TRADING
 #${props.transaction_no}
 ${new Date().toLocaleString()}
 
 ${padColumns("Customer Name", props.customer_name)}
+${padColumns("Item Name", props.item_name)}
+${padColumns("Qty", props.container_qty)}
 ${padColumns("Swap", props.swap)}
-${padColumns("Container Qty", props.container_qty)}
 ${padColumns("Unit Price", props.unit_price)}
 ${padColumns("Total Amount", props.total_amount)}
 ${padColumns("No. of Days", props.days)}
